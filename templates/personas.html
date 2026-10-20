@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Personal · Sistema de Equipo Médico{% endblock %}
+
+{% block content %}
+<h1>Personal (médicos y enfermeros)</h1>
+
+<section class="panel">
+  <h2>Registrar persona</h2>
+  <form method="post" action="{{ url_for('personas_pagina') }}" class="form-inline">
+    <label for="pe-nombre">Nombre
+      <input type="text" id="pe-nombre" name="nombre" required placeholder="Dra. María López">
+    </label>
+    <label for="pe-rol">Rol
+      <select id="pe-rol" name="rol" required>
+        <option value="medico">Médico</option>
+        <option value="enfermero">Enfermero</option>
+      </select>
+    </label>
+    <label for="pe-cedula">Cédula
+      <input type="text" id="pe-cedula" name="cedula" placeholder="MED-1004">
+    </label>
+    <button class="btn btn-primario" type="submit">Agregar</button>
+  </form>
+</section>
+
+<table class="tabla tabla-amplia">
+  <thead>
+    <tr><th>Nombre</th><th>Rol</th><th>Cédula</th><th>Préstamos</th><th>Pendientes</th><th>Acciones</th></tr>
+  </thead>
+  <tbody>
+    {% for p in personas %}
+    <tr class="{% if not p.activo %}fila-inactiva{% endif %}">
+      <td>
+        <form method="post" action="{{ url_for('persona_editar', persona_id=p.id) }}" class="form-tabla">
+          <input type="text" name="nombre" value="{{ p.nombre }}" required>
+      </td>
+      <td>
+        <select name="rol">
+          <option value="medico" {% if p.rol == 'medico' %}selected{% endif %}>Médico</option>
+          <option value="enfermero" {% if p.rol == 'enfermero' %}selected{% endif %}>Enfermero</option>
+        </select>
+      </td>
+      <td><input type="text" name="cedula" value="{{ p.cedula or '' }}"></td>
+      <td>{{ p.total_prestamos }}</td>
+      <td>
+        {% if p.pendientes %}
+        <span class="chip chip-ambar">{{ p.pendientes }} activo(s)</span>
+        {% else %}
+        <span class="chip chip-verde">0</span>
+        {% endif %}
+      </td>
+      <td class="celda-acciones">
+        <button class="btn btn-chico" type="submit">Guardar</button>
+        </form>
+        <form method="post" action="{{ url_for('persona_toggle', persona_id=p.id) }}">
+          <button class="btn btn-chico {% if p.activo %}btn-peligro{% else %}btn-secundario{% endif %}" type="submit">
+            {% if p.activo %}Desactivar{% else %}Activar{% endif %}
+          </button>
+        </form>
+        <a class="enlace-historial" href="{{ url_for('prestamos', persona_id=p.id) }}">Historial</a>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="vacio">No hay personas registradas.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

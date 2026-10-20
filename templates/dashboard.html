@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard · Préstamo de Equipo Médico{% endblock %}
+
+{% block content %}
+<section class="panel serial-panel">
+  <div class="serial-info">
+    <span id="serial-status" class="serial-badge desconectado">Verificando puerto serial…</span>
+    <span id="serial-msg" class="serial-msg"></span>
+  </div>
+  <div class="simulador">
+    <label for="uid-manual">Simular lectura RFID:</label>
+    <input type="text" id="uid-manual" placeholder="A1B2C3D4" maxlength="20">
+    <button class="btn btn-chico" id="btn-simular" type="button">Enviar</button>
+  </div>
+</section>
+
+<section class="ultimo-uid-barra panel">
+  Último UID leído: <strong id="ultimo-uid">—</strong>
+</section>
+
+{% set vencidos = equipos | selectattr('vencido') | list %}
+{% set prestados = equipos | selectattr('prestado') | list %}
+<div class="resumen">
+  <div class="resumen-tarjeta verde"><span class="num">{{ equipos | length - prestados | length }}</span>Disponibles</div>
+  <div class="resumen-tarjeta ambar"><span class="num">{{ prestados | length - vencidos | length }}</span>Prestados</div>
+  <div class="resumen-tarjeta rojo"><span class="num">{{ vencidos | length }}</span>Vencidos</div>
+</div>
+
+{% if vencidos %}
+<div class="alerta alerta-vencidos">
+  ⚠ {{ vencidos | length }} equipo(s) con fecha límite vencida:
+  {% for e in vencidos %}<strong>{{ e.nombre }}</strong>{{ ', ' if not loop.last }}{% endfor %}.
+  <a href="{{ url_for('prestamos') }}">Ver préstamos</a>
+</div>
+{% endif %}
+
+<h2>Estado de equipos</h2>
+<div class="grid-equipos">
+  {% for e in equipos %}
+  <article class="equipo-card {% if e.vencido %}estado-vencido{% elif e.prestado %}estado-prestado{% else %}estado-disponible{% endif %}"
+           data-uid="{{ e.uid_rfid }}" data-id="{{ e.id }}">
+    <header>
+      <span class="chip {% if e.vencido %}chip-rojo{% elif e.prestado %}chip-ambar{% else %}chip-verde{% endif %}">
+        {% if e.vencido %}Vencido{% elif e.prestado %}Prestado{% else %}Disponible{% endif %}
+      </span>
+      <code class="uid-tag">{{ e.uid_rfid }}</code>
+    </header>
+    <h3>{{ e.nombre }}</h3>
+    <p class="categoria">{{ e.categoria }}</p>
+    {% if e.prestado %}
+    <p class="prestamista">Con: <strong>{{ e.prestamista }}</strong>
+      ({{ 'Médico' if e.rol_prestamista == 'medico' else 'Enfermero' }})</p>
+    <p class="fechas">Prestado: {{ e.fecha_prestamo }}<br>
+      Límite: {{ e.fecha_limite or 'sin fecha límite' }}</p>
+    {% if e.vencido %}
+    <p class="vencido-texto">⚠ Vencido desde {{ e.fecha_limite[:10] }}</p>
+    {% endif %}
+    {% endif %}
+    {% if e.notas %}<p class="notas">{{ e.notas }}</p>{% endif %}
+    <footer>
+      <a class="enlace-historial" href="{{ url_for('prestamos', equipo_id=e.id) }}">Ver historial</a>
+    </footer>
+  </article>
+  {% else %}
+  <p class="vacio">No hay equipos registrados. <a href="{{ url_for('equipos_pagina') }}">Agregue el primero</a>.</p>
+  {% endfor %}
+</div>
+
+<div class="paneles-accion">
+  <section class="panel">
+    <h2>Registrar préstamo</h2>
+    <form id="form-prestar">
+      <label for="prestar-persona">Persona
+        <select id="prestar-persona" required>
+          <option value="">— Seleccione —</option>
+          {% for p in personas %}
+          <option value="{{ p.id }}">{{ p.nombre }} ({{ 'Médico' if p.rol == 'medico' else 'Enfermero' }})</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label for="prestar-equipo">Equipo
+        <select id="prestar-equipo" required>
+          <option value="escanear">— Escanear tag RFID —</option>
+          {% for e in equipos if not e.prestado %}
+          <option value="{{ e.id }}">{{ e.nombre }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label for="prestar-fecha">Fecha límite
+        <input type="date" id="prestar-fecha">
+      </label>
+      <label for="prestar-notas">Notas
+        <input type="text" id="prestar-notas" placeholder="opcional (cama, urgencia…)">
+      </label>
+      <button class="btn btn-primario" type="submit">Registrar préstamo</button>
+      <p class="ayuda">Con «Escanear tag RFID» seleccionado, elija a la persona y acerque el
+        tag del equipo: el préstamo se registra automáticamente.</p>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Registrar devolución</h2>
+    <button class="btn btn-secundario" id="btn-devolver-escanear" type="button">
+      Escanear tag para devolver
+    </button>
+    <p class="ayuda">Acerque el tag del equipo prestado. Alternativa: botón «Devolver» de cada fila.</p>
+    <table class="tabla">
+      <thead>
+        <tr><th>Equipo</th><th>Persona</th><th>Límite</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for e in prestados %}
+        <tr class="{% if e.vencido %}fila-vencida{% endif %}">
+          <td>{{ e.nombre }}</td>
+          <td>{{ e.prestamista }}</td>
+          <td>{{ e.fecha_limite or '—' }}</td>
+          <td><button class="btn btn-chico btn-devolver" data-id="{{ e.prestamo_id }}">Devolver</button></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="vacio">No hay préstamos activos.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}

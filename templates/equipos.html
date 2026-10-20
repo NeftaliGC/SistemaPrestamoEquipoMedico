@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Equipos · Sistema de Equipo Médico{% endblock %}
+
+{% block content %}
+<h1>Equipos médicos</h1>
+
+<section class="panel">
+  <h2>Registrar nuevo equipo</h2>
+  <form method="post" action="{{ url_for('equipos_pagina') }}" class="form-inline">
+    <label for="eq-nombre">Nombre
+      <input type="text" id="eq-nombre" name="nombre" required placeholder="Oxímetro de pulso">
+    </label>
+    <label for="eq-categoria">Categoría
+      <input type="text" id="eq-categoria" name="categoria" placeholder="Diagnóstico">
+    </label>
+    <label for="eq-uid">UID RFID
+      <input type="text" id="eq-uid" name="uid_rfid" required placeholder="A1B2C3D4" maxlength="20">
+    </label>
+    <label for="eq-notas">Notas
+      <input type="text" id="eq-notas" name="notas" placeholder="opcional">
+    </label>
+    <button class="btn btn-primario" type="submit">Agregar equipo</button>
+  </form>
+  <p class="ayuda">Escriba el UID que muestre el lector al acercar el tag (p. ej. <code>A1B2C3D4</code>).
+    Puede copiarlo del panel «Último UID leído» del dashboard.</p>
+</section>
+
+<table class="tabla tabla-amplia">
+  <thead>
+    <tr>
+      <th>Nombre</th><th>Categoría</th><th>UID RFID</th><th>Estado</th><th>Con</th><th>Notas</th><th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in equipos %}
+    <tr class="{% if e.vencido %}fila-vencida{% endif %} {% if not e.activo %}fila-inactiva{% endif %}">
+      <td>
+        <form method="post" action="{{ url_for('equipo_editar', equipo_id=e.id) }}" class="form-tabla">
+          <input type="text" name="nombre" value="{{ e.nombre }}" required>
+      </td>
+      <td><input type="text" name="categoria" value="{{ e.categoria }}"></td>
+      <td><input type="text" name="uid_rfid" value="{{ e.uid_rfid }}" required maxlength="20"></td>
+      <td>
+        {% if not e.activo %}
+        <span class="chip chip-gris">Inactivo</span>
+        {% elif e.vencido %}
+        <span class="chip chip-rojo">Vencido</span>
+        {% elif e.prestado %}
+        <span class="chip chip-ambar">Prestado</span>
+        {% else %}
+        <span class="chip chip-verde">Disponible</span>
+        {% endif %}
+      </td>
+      <td>{{ e.prestamista or '—' }}</td>
+      <td><input type="text" name="notas" value="{{ e.notas or '' }}"></td>
+      <td class="celda-acciones">
+        <button class="btn btn-chico" type="submit">Guardar</button>
+        </form>
+        <form method="post" action="{{ url_for('equipo_toggle', equipo_id=e.id) }}">
+          <button class="btn btn-chico {% if e.activo %}btn-peligro{% else %}btn-secundario{% endif %}" type="submit">
+            {% if e.activo %}Dar de baja{% else %}Dar de alta{% endif %}
+          </button>
+        </form>
+        <a class="enlace-historial" href="{{ url_for('prestamos', equipo_id=e.id) }}">Historial</a>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="vacio">No hay equipos registrados.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
